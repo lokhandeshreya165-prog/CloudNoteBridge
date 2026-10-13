@@ -7,12 +7,15 @@ import {
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
+  Compass,
+  RotateCcw,
+  BookOpen,
 } from 'lucide-react';
 import { Note } from '../types';
 import { api } from '../services/api';
 import { NoteCard } from '../components/NoteCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { GridSkeleton } from '../components/LoadingSkeleton';
 
 const DEPARTMENTS = [
   'All Departments',
@@ -93,16 +96,24 @@ export const ExplorePage: React.FC = () => {
     setPage(1);
   };
 
+  const hasActiveFilters = Boolean(
+    q || (department && department !== 'All Departments') || semester || unit || fileType || sortBy !== 'newest'
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header & Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
         <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80 mb-2">
+            <Compass className="w-3.5 h-3.5 text-blue-600" />
+            <span>Academic Resource Discovery</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Explore Course Notes
           </h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Browse verified academic documents, syllabus units, and slides.
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            Browse verified academic documents, syllabus unit guides, and lecture slides.
           </p>
         </div>
 
@@ -115,12 +126,12 @@ export const ExplorePage: React.FC = () => {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search title, topic, or subject..."
-              className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-2xs"
+              className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 shadow-xs"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+            className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer active:scale-95"
           >
             Search
           </button>
@@ -128,29 +139,31 @@ export const ExplorePage: React.FC = () => {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
         <div className="flex items-center justify-between md:hidden mb-3">
           <button
             onClick={() => setShowFiltersMobile(!showFiltersMobile)}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 p-2 rounded-lg bg-slate-50 border border-slate-200"
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer"
           >
-            <SlidersHorizontal className="w-4 h-4" />
+            <SlidersHorizontal className="w-4 h-4 text-blue-600" />
             {showFiltersMobile ? 'Hide Filters' : 'Show Filters'}
           </button>
-          <span className="text-xs text-slate-500 font-medium">{totalCount} results</span>
+          <span className="text-xs text-slate-500 font-semibold">{totalCount} notes found</span>
         </div>
 
-        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 ${showFiltersMobile ? 'block' : 'hidden md:grid'}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5 ${showFiltersMobile ? 'block' : 'hidden md:grid'}`}>
           {/* Department */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Department</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Department
+            </label>
             <select
               value={department}
               onChange={(e) => {
                 setDepartment(e.target.value);
                 setPage(1);
               }}
-              className="w-full py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700"
+              className="w-full py-2 px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 font-medium"
             >
               {DEPARTMENTS.map((dept) => (
                 <option key={dept} value={dept}>
@@ -162,17 +175,19 @@ export const ExplorePage: React.FC = () => {
 
           {/* Semester */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Semester</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Semester
+            </label>
             <select
               value={semester}
               onChange={(e) => {
                 setSemester(e.target.value);
                 setPage(1);
               }}
-              className="w-full py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700"
+              className="w-full py-2 px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 font-medium"
             >
               <option value="">All Semesters</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((s) => (
                 <option key={s} value={s}>
                   Semester {s}
                 </option>
@@ -182,17 +197,19 @@ export const ExplorePage: React.FC = () => {
 
           {/* Unit */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Syllabus Unit</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Unit Number
+            </label>
             <select
               value={unit}
               onChange={(e) => {
                 setUnit(e.target.value);
                 setPage(1);
               }}
-              className="w-full py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700"
+              className="w-full py-2 px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 font-medium"
             >
               <option value="">All Units</option>
-              {[1, 2, 3, 4, 5, 6].map((u) => (
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((u) => (
                 <option key={u} value={u}>
                   Unit {u}
                 </option>
@@ -200,101 +217,112 @@ export const ExplorePage: React.FC = () => {
             </select>
           </div>
 
-          {/* File Format */}
+          {/* File Type */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Format</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              File Format
+            </label>
             <select
               value={fileType}
               onChange={(e) => {
                 setFileType(e.target.value);
                 setPage(1);
               }}
-              className="w-full py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700"
+              className="w-full py-2 px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 font-medium"
             >
               <option value="">All Formats</option>
-              <option value="pdf">PDF Documents</option>
-              <option value="pptx">PPTX Presentations</option>
-              <option value="ppt">PPT Slides</option>
+              <option value="pdf">PDF Document (.pdf)</option>
+              <option value="pptx">Slides (.pptx, .ppt)</option>
+              <option value="docx">Word (.docx, .doc)</option>
+              <option value="txt">Text File (.txt)</option>
             </select>
           </div>
 
-          {/* Sort */}
+          {/* Sort By */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">Sort By</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Sort Order
+            </label>
             <select
               value={sortBy}
               onChange={(e) => {
                 setSortBy(e.target.value);
                 setPage(1);
               }}
-              className="w-full py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-700"
+              className="w-full py-2 px-3 text-xs bg-slate-50/70 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 font-medium"
             >
-              <option value="newest">Newest First</option>
-              <option value="title">Note Title (A-Z)</option>
-              <option value="semester">Semester</option>
-              <option value="unit">Unit Number</option>
+              <option value="newest">Recently Uploaded</option>
+              <option value="title">Alphabetical (Title)</option>
+              <option value="semester">By Semester</option>
+              <option value="unit">By Syllabus Unit</option>
             </select>
           </div>
         </div>
 
-        {/* Clear Filters indicator */}
-        {(q || (department && department !== 'All Departments') || semester || unit || fileType) && (
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-medium">Showing {totalCount} matching notes</span>
+        {/* Active Filter Summary Bar */}
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-slate-500">
+            <span className="font-bold text-slate-900">{totalCount}</span> notes matching your criteria
+          </div>
+
+          {hasActiveFilters && (
             <button
               onClick={handleResetFilters}
-              className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
-              Reset All Filters
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset all filters</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Notes Grid */}
+      {/* Note Grid / Results */}
       {loading ? (
-        <LoadingSpinner message="Searching verified course notes..." className="py-20" />
-      ) : notes.length === 0 ? (
-        <EmptyState
-          title="No Course Notes Found"
-          description="Try broadening your search term or clearing some of the filters above."
-          actionText="Clear All Filters"
-          onActionClick={handleResetFilters}
-        />
+        <GridSkeleton count={9} />
+      ) : notes.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {notes.map((note) => (
+              <NoteCard key={note.id} note={note} />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-6">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs"
+                aria-label="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="text-xs font-semibold text-slate-700 px-4 py-2 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                Page {page} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-2xs"
+                aria-label="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {notes.map((note) => (
-            <NoteCard key={note.id} note={note} />
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-          <button
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page <= 1}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Previous
-          </button>
-
-          <span className="text-xs text-slate-500 font-medium">
-            Page {page} of {totalPages}
-          </span>
-
-          <button
-            onClick={() => setPage(Math.min(totalPages, page + 1))}
-            disabled={page >= totalPages}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
-          >
-            Next
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+        <EmptyState
+          title="No notes match your filters"
+          description="Try broadening your search term, selecting 'All Departments', or clearing some filters."
+          actionText="Clear Filters"
+          onActionClick={handleResetFilters}
+          icon={BookOpen}
+        />
       )}
     </div>
   );

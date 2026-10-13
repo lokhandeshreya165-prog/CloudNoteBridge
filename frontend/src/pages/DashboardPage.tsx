@@ -9,13 +9,18 @@ import {
   ArrowRight,
   TrendingUp,
   GraduationCap,
+  Sparkles,
+  Compass,
+  Clock,
+  CheckCircle2,
+  FolderOpen,
 } from 'lucide-react';
 import { Note } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { NoteCard } from '../components/NoteCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { GridSkeleton } from '../components/LoadingSkeleton';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -60,148 +65,175 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  // Group recent notes by subject
-  const subjectsMap = recentNotes.reduce((acc, note) => {
-    acc[note.subject] = (acc[note.subject] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Group recent notes by unique subject for filter chips
+  const distinctSubjects = Array.from(new Set(recentNotes.map((n) => n.subject))).slice(0, 5);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-3xl p-6 sm:p-10 text-white shadow-lg relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 backdrop-blur-md text-white mb-4">
-            <GraduationCap className="w-4 h-4" />
-            {user?.department} • Semester {user?.semester}
+      {/* =========================================================================
+          HERO BANNER (Educational EdTech Welcome)
+          ========================================================================= */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-6 sm:p-10 shadow-xl border border-slate-800">
+        {/* Subtle mesh background circles */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-20 w-60 h-60 rounded-full bg-indigo-600/20 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-3xl">
+          {/* Department Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md text-blue-200 border border-white/15 mb-4">
+            <GraduationCap className="w-4 h-4 text-blue-400" />
+            <span>{user?.department || 'Academic Department'} • Semester {user?.semester || 1}</span>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-            Welcome back, {user?.full_name}!
+
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+            Good to see you again{user?.full_name ? `, ${user.full_name}` : ''}!
           </h1>
-          <p className="mt-2 text-sm sm:text-base text-blue-100/90 leading-relaxed">
-            Find the latest unit syllabus notes, exam preparation materials, and slides uploaded by your college peers.
+
+          <p className="mt-2 text-sm sm:text-base text-slate-300/90 leading-relaxed max-w-2xl">
+            Your next great study session starts here. Find unit syllabus notes, exam preparation guides, and presentation slides uploaded by your college peers.
           </p>
 
-          {/* Search bar inside banner */}
-          <form onSubmit={handleSearchSubmit} className="mt-6 flex items-center gap-2 max-w-lg">
+          {/* Search Bar */}
+          <form onSubmit={handleSearchSubmit} className="mt-6 flex flex-col sm:flex-row items-stretch gap-2.5 max-w-2xl">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by topic, unit, or subject..."
-                className="w-full pl-10 pr-4 py-2.5 text-sm bg-white text-slate-900 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+                placeholder="Search notes, subjects, semesters, or topics..."
+                className="w-full pl-10 pr-4 py-3 text-sm bg-white/95 text-slate-900 placeholder:text-slate-400 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
               />
             </div>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-xl shadow-sm transition shrink-0 cursor-pointer"
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-bold rounded-xl shadow-md transition shrink-0 cursor-pointer flex items-center justify-center gap-2 active:scale-95"
             >
-              Search
+              <Search className="w-4 h-4" />
+              <span>Search Notes</span>
             </button>
           </form>
-        </div>
 
-        {/* Action Button */}
-        <div className="mt-6 sm:mt-0 sm:absolute sm:right-10 sm:bottom-10 z-10">
-          <Link
-            to="/upload"
-            className="inline-flex items-center gap-2 px-5 py-3 bg-white text-blue-700 hover:bg-blue-50 text-sm font-bold rounded-xl shadow-md transition"
-          >
-            <Upload className="w-4 h-4" />
-            Upload New Note
-          </Link>
+          {/* Quick Subject Chips */}
+          {distinctSubjects.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span className="text-slate-400 font-medium">Quick subjects:</span>
+              {distinctSubjects.map((subj) => (
+                <button
+                  key={subj}
+                  type="button"
+                  onClick={() => navigate(`/explore?subject=${encodeURIComponent(subj)}`)}
+                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition cursor-pointer border border-white/10"
+                >
+                  {subj}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Real Metric Cards */}
+      {/* =========================================================================
+          KEY STATS & ACTIONS ROW
+          ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <BookOpen className="w-6 h-6" />
+        {/* Card 1: Explore Directory */}
+        <Link
+          to="/explore"
+          className="group p-5 bg-white border border-slate-200/90 hover:border-blue-300 rounded-2xl shadow-xs hover:shadow-lg transition-all flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition flex items-center justify-center shrink-0">
+              <Compass className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Campus Library</p>
+              <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                {totalNotesCount} Verified Notes
+              </h3>
+            </div>
           </div>
-          <div>
-            <span className="text-xs text-slate-500 font-medium">Available Notes</span>
-            <p className="text-2xl font-bold text-slate-900">{totalNotesCount}</p>
-          </div>
-        </div>
+          <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+        </Link>
 
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-            <FileText className="w-6 h-6" />
+        {/* Card 2: My Contributions */}
+        <Link
+          to="/my-uploads"
+          className="group p-5 bg-white border border-slate-200/90 hover:border-indigo-300 rounded-2xl shadow-xs hover:shadow-lg transition-all flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition flex items-center justify-center shrink-0">
+              <FolderOpen className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">My Contributions</p>
+              <h3 className="text-lg font-bold text-slate-900 mt-0.5">
+                {myNotesCount} Uploaded
+              </h3>
+            </div>
           </div>
-          <div>
-            <span className="text-xs text-slate-500 font-medium">Your Uploads</span>
-            <p className="text-2xl font-bold text-slate-900">{myNotesCount}</p>
-          </div>
-        </div>
+          <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+        </Link>
 
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <Layers className="w-6 h-6" />
+        {/* Card 3: Quick Upload CTA */}
+        <Link
+          to="/upload"
+          className="group p-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl shadow-md hover:shadow-xl transition-all flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0">
+              <Upload className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-blue-200 uppercase tracking-wider">Share With Peers</p>
+              <h3 className="text-lg font-bold text-white mt-0.5">Quick Upload Note</h3>
+            </div>
           </div>
-          <div>
-            <span className="text-xs text-slate-500 font-medium">Subjects Active</span>
-            <p className="text-2xl font-bold text-slate-900">{Object.keys(subjectsMap).length}</p>
-          </div>
-        </div>
+          <ArrowRight className="w-5 h-5 text-white/80 group-hover:text-white group-hover:translate-x-1 transition-all" />
+        </Link>
       </div>
 
-      {/* Active Subjects Pills */}
-      {Object.keys(subjectsMap).length > 0 && (
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
-          <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-600" />
-            Popular Course Subjects
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(subjectsMap).map(([subject, count]) => (
-              <Link
-                key={subject}
-                to={`/explore?subject=${encodeURIComponent(subject)}`}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 transition"
-              >
-                {subject}
-                <span className="px-1.5 py-0.2 rounded-full bg-slate-200/60 text-[10px] text-slate-600">
-                  {count}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recently Uploaded Notes Section */}
-      <div>
-        <div className="flex items-center justify-between mb-5">
+      {/* =========================================================================
+          RECENTLY UPLOADED NOTES SECTION
+          ========================================================================= */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Recently Uploaded Notes</h2>
-            <p className="text-xs text-slate-500">Course materials newly added by university students</p>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              <span>Recently Shared Notes</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Fresh study materials and lecture documents uploaded by university students
+            </p>
           </div>
+
           <Link
             to="/explore"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition group"
           >
-            Explore all notes <ArrowRight className="w-3.5 h-3.5" />
+            <span>View all campus notes</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
 
+        {/* Content */}
         {loading ? (
-          <LoadingSpinner message="Fetching course documents..." />
-        ) : recentNotes.length === 0 ? (
-          <EmptyState
-            title="No Course Notes Yet"
-            description="Be the first student to upload a lecture note or presentation slides for your department!"
-            actionText="Upload Notes"
-            actionLink="/upload"
-          />
-        ) : (
+          <GridSkeleton count={6} />
+        ) : recentNotes.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {recentNotes.map((note) => (
               <NoteCard key={note.id} note={note} />
             ))}
           </div>
+        ) : (
+          <EmptyState
+            title="No notes shared yet"
+            description="Be the first to upload course notes for your department and semester!"
+            actionText="Upload First Note"
+            actionLink="/upload"
+            icon={BookOpen}
+          />
         )}
       </div>
     </div>
