@@ -1,0 +1,14 @@
+{
+  "include": ["backend"],
+  "extraPaths": ["./backend"],
+  "venvPath": "./backend",
+  "venv": ".venv",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "executionEnvironments": [
+    {
+      "root": "./backend",
+      "extraPaths": ["./backend"]
+    }
+  ]
+}
