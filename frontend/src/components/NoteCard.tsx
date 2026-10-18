@@ -54,7 +54,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, showDelete =
         document.body.removeChild(a);
       }
     } catch (err: any) {
-      setError(err.message || 'Download failed. Please sign in or try again.');
+      setError(err.message || 'Download did not work. Please log in and try again.');
     } finally {
       setDownloading(false);
     }
@@ -82,11 +82,11 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, showDelete =
             {note.subject}
           </span>
           <div className="flex items-center gap-1.5">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700">
               Sem {note.semester} • Unit {note.unit_number}
             </span>
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
+              className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider ${
                 isPdf
                   ? 'bg-rose-50 text-rose-700 border border-rose-200/80'
                   : isPptx
@@ -117,23 +117,23 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, showDelete =
 
         {/* Description snippet */}
         {note.description ? (
-          <p className="mt-2 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+          <p className="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed">
             {note.description}
           </p>
         ) : (
-          <p className="mt-2 text-xs text-slate-400 italic">No additional summary provided.</p>
+          <p className="mt-2 text-sm text-slate-400 italic">No description added.</p>
         )}
 
         {/* Academic Metadata */}
         <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-500">
-          <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-slate-700 truncate max-w-[200px]" title={note.department}>
               {note.department}
             </span>
             <span className="text-slate-400 font-mono font-medium">{formatFileSize(note.file_size)}</span>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+          <div className="flex items-center justify-between text-xs text-slate-400 pt-0.5">
             <span className="flex items-center gap-1.5 truncate max-w-[170px] text-slate-600 font-medium">
               <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-[10px]">
                 {(note.uploader_name || 'S').charAt(0).toUpperCase()}
@@ -162,10 +162,10 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, showDelete =
         <div className="flex items-center justify-between gap-2">
           <Link
             to={`/notes/${note.id}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-blue-700 bg-slate-100/80 hover:bg-blue-50 rounded-xl transition"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-700 bg-slate-100/80 hover:bg-blue-50 rounded-xl transition"
           >
             <Eye className="w-3.5 h-3.5" />
-            <span>Details</span>
+            <span>View</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -184,8 +184,8 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note, onDelete, showDelete =
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 rounded-xl shadow-xs hover:shadow-md transition cursor-pointer active:scale-95"
-              title="Download course note"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 rounded-xl shadow-xs hover:shadow-md transition cursor-pointer active:scale-95"
+              title="Download this note"
             >
               {downloading ? (
                 <>
