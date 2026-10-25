@@ -1,0 +1,211 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudNoteBridge - Complete Single-Instance EC2 & S3 Deployment Stack'
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t3.small
+      - t4g.micro
+      - t4g.small
+    Description: EC2 Instance type (t2.micro or t3.micro are eligible for AWS Free Tier).
+
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: (Optional) Name of an existing EC2 KeyPair to enable SSH access.
+    Default: ''
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/status'
+    Description: Canonical Ubuntu 24.04 LTS AMI Parameter.
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, '']]
+
+Resources:
+  # 1. Private S3 Bucket for Course Notes
+  NoteStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, HEAD]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+
+  # 2. IAM Role for EC2 Instance to access S3 Bucket without hardcoded keys
+  EC2S3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudNoteBridgeS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: !Sub 'arn:aws:s3:::${NoteStorageBucket}'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:HeadObject
+                Resource: !Sub 'arn:aws:s3:::${NoteStorageBucket}/*'
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2S3Role
+
+  # 3. Security Group for Web and SSH Traffic
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for CloudNoteBridge Web Server
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Inbound HTTP from anywhere
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Inbound HTTPS from anywhere
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH access
+
+  # 4. EC2 Web Server Instance
+  WebServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref WebServerSecurityGroup
+      KeyName: !If [HasKeyName, !Ref KeyName, !Ref 'AWS::NoValue']
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
+          echo "Starting CloudNoteBridge Automated CloudFormation Setup..."
+          
+          # Update and install dependencies
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          apt-get install -y git curl ufw nginx mysql-server python3 python3-pip python3-venv build-essential
+
+          # Install Node.js 20.x
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+
+          # MySQL Setup
+          systemctl enable --now mysql
+          DB_PASS=$(openssl rand -hex 16)
+          SECRET_KEY=$(openssl rand -hex 32)
+          mysql -e "CREATE DATABASE IF NOT EXISTS cloudnotebridge CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          mysql -e "CREATE USER IF NOT EXISTS 'clouduser'@'localhost' IDENTIFIED BY '$DB_PASS';"
+          mysql -e "GRANT ALL PRIVILEGES ON cloudnotebridge.* TO 'clouduser'@'localhost';"
+          mysql -e "FLUSH PRIVILEGES;"
+
+          # Clone application
+          APP_DIR="/var/www/cloudnotebridge"
+          mkdir -p "$APP_DIR"
+          git clone https://github.com/lokhandeshreya165-prog/CloudNoteBridge.git "$APP_DIR"
+          chown -R ubuntu:ubuntu "$APP_DIR"
+
+          # Build Frontend
+          cd "$APP_DIR/frontend"
+          npm ci
+          npm run build
+
+          # Setup Backend
+          cd "$APP_DIR/backend"
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt gunicorn
+
+          cat <<EOF > .env
+          SECRET_KEY=$SECRET_KEY
+          DATABASE_URL=mysql+pymysql://clouduser:$DB_PASS@localhost:3306/cloudnotebridge
+          STORAGE_PROVIDER=s3
+          AWS_REGION=${AWS::Region}
+          AWS_S3_BUCKET=${NoteStorageBucket}
+          S3_PRESIGNED_URL_EXPIRATION=3600
+          MAX_UPLOAD_SIZE_MB=25
+          CORS_ORIGINS=*
+          SESSION_COOKIE_SECURE=False
+          SESSION_COOKIE_SAMESITE=Lax
+          FLASK_RUN_HOST=127.0.0.1
+          FLASK_RUN_PORT=5000
+          FLASK_DEBUG=False
+          EOF
+
+          # Initialize and seed database
+          python3 -m flask --app app:create_app init-db
+          python3 -m flask --app app:create_app seed-data
+
+          # Configure Systemd
+          mkdir -p /var/log/cloudnotebridge
+          chown -R ubuntu:ubuntu /var/log/cloudnotebridge
+          cp "$APP_DIR/deploy/systemd/cloudnotebridge.service" /etc/systemd/system/cloudnotebridge.service
+          systemctl daemon-reload
+          systemctl enable --now cloudnotebridge
+
+          # Configure Nginx
+          cp "$APP_DIR/deploy/nginx/cloudnotebridge.conf" /etc/nginx/sites-available/cloudnotebridge
+          rm -f /etc/nginx/sites-enabled/default
+          ln -sf /etc/nginx/sites-available/cloudnotebridge /etc/nginx/sites-enabled/
+          systemctl restart nginx
+
+          echo "Deployment finished successfully!"
+
+Outputs:
+  WebsiteURL:
+    Description: 'Public URL to access CloudNoteBridge'
+    Value: !Sub 'http://${WebServerInstance.PublicIp}'
+  PublicIP:
+    Description: 'Public IPv4 address of the EC2 Instance'
+    Value: !GetAtt WebServerInstance.PublicIp
+  S3BucketName:
+    Description: 'AWS S3 Bucket created for Note Storage'
+    Value: !Ref NoteStorageBucket

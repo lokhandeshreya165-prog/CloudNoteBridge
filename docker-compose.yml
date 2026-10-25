@@ -1,0 +1,69 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: cloudnotebridge-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cloudnotebridge
+      MYSQL_USER: ${DB_USER:-clouduser}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-cloudnote_secret_2026}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_secret_2026}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u $${MYSQL_USER} --password=$${MYSQL_PASSWORD} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - cloudnote-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudnotebridge-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-replace-with-a-secure-random-secret-key-32-bytes}
+      DATABASE_URL: mysql+pymysql://${DB_USER:-clouduser}:${DB_PASSWORD:-cloudnote_secret_2026}@db:3306/cloudnotebridge
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-auto}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      S3_PRESIGNED_URL_EXPIRATION: ${S3_PRESIGNED_URL_EXPIRATION:-3600}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-25}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://127.0.0.1}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-False}
+      SESSION_COOKIE_SAMESITE: Lax
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - cloudnote-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudnotebridge-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${PORT:-80}:80"
+    networks:
+      - cloudnote-network
+
+volumes:
+  mysql_data:
+  uploads_data:
+
+networks:
+  cloudnote-network:
+    driver: bridge

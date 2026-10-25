@@ -237,7 +237,15 @@ npm run build
 
 ---
 
-## 8. AWS S3 Configuration (Optional)
+## 8. Production AWS Deployment & S3 Storage
+
+### Deployment Options
+- **1-Click CloudFormation Stack**: Provision EC2, S3 bucket, IAM role, and auto-deploy in 5 minutes using `deploy/aws/cloudformation-template.yaml`.
+- **Automated EC2 Script**: Run `deploy/scripts/setup-ec2.sh` on Ubuntu 24.04/22.04 LTS.
+- **Docker Compose**: Containerized multi-service setup (`docker compose up -d`).
+- Comprehensive guide: **[AWS Hosting Guide](docs/aws-hosting-guide.md)**.
+
+### S3 Object Storage Configuration
 
 To enable live AWS S3 object storage:
 1. Create a private bucket in the AWS S3 console with **Block all public access** enabled.
@@ -252,7 +260,7 @@ To enable live AWS S3 object storage:
    AWS_SECRET_ACCESS_KEY=your-secret-access-key
    ```
 5. Restart the backend server. The navbar status indicator will automatically switch to **"AWS S3 Active"**.
-*(See [docs/aws-setup.md](file:///c:/Users/Shreya%20Lokhande/Desktop/CloudNoteBridge/docs/aws-setup.md) for full instructions).*
+*(See [docs/aws-setup.md](docs/aws-setup.md) for full instructions).*
 
 ---
 

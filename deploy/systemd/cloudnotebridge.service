@@ -1,0 +1,24 @@
+[Unit]
+Description=CloudNoteBridge Flask Gunicorn Service
+After=network.target mysql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/var/www/cloudnotebridge/backend
+Environment="PATH=/var/www/cloudnotebridge/backend/.venv/bin"
+EnvironmentFile=/var/www/cloudnotebridge/backend/.env
+ExecStart=/var/www/cloudnotebridge/backend/.venv/bin/gunicorn \
+    --workers 3 \
+    --threads 2 \
+    --bind 127.0.0.1:5000 \
+    --timeout 120 \
+    --access-logfile /var/log/cloudnotebridge/access.log \
+    --error-logfile /var/log/cloudnotebridge/error.log \
+    wsgi:app
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -206,7 +206,7 @@ def create_storage_service(config: dict) -> StorageService:
     local_dir_val = config.get("LOCAL_STORAGE_DIR")
     local_dir = str(local_dir_val) if local_dir_val else os.path.join(os.getcwd(), "uploads")
 
-    if provider == "s3" or (provider == "auto" and s3_bucket and (access_key or os.getenv("AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"))):
+    if s3_bucket and (provider in ("s3", "auto")):
         try:
             return S3StorageService(
                 bucket_name=s3_bucket,
