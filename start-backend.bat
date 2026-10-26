@@ -15,5 +15,5 @@ if not exist ".venv\Scripts\python.exe" (
     call .venv\Scripts\activate.bat
 )
 
-python run.py
+.\.venv\Scripts\python.exe run.py
 pause
