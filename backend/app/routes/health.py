@@ -1,10 +1,38 @@
-"""Health check endpoint for system monitoring and readiness."""
+"""Health check and root status endpoints for system monitoring."""
 from datetime import datetime, timezone
 from flask import Blueprint, jsonify, current_app
 from sqlalchemy import text
 from app.extensions import db
 
+main_bp = Blueprint("main", __name__)
 health_bp = Blueprint("health", __name__, url_prefix="/api")
+
+
+@main_bp.route("/", methods=["GET"])
+def index():
+    """Root endpoint providing service status and navigation guidance."""
+    return jsonify({
+        "service": "CloudNoteBridge API",
+        "status": "online",
+        "version": "1.0.0",
+        "message": "CloudNoteBridge backend is running. Open the frontend in your browser to use the application.",
+        "frontend_url": "http://localhost:5173",
+        "health_check": "/api/health",
+        "endpoints": {
+            "health": "/api/health",
+            "auth": "/api/auth",
+            "notes": "/api/notes",
+            "downloads": "/api/downloads",
+            "profile": "/api/profile",
+            "admin": "/api/admin",
+        },
+    }), 200
+
+
+@main_bp.route("/favicon.ico", methods=["GET"])
+def favicon():
+    """Handle browser favicon requests cleanly to avoid 404 logs."""
+    return "", 204
 
 
 @health_bp.route("/health", methods=["GET"])

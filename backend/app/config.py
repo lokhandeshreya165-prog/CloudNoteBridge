@@ -14,12 +14,15 @@ class Config:
 
     # Database configuration
     # Default to MySQL with PyMySQL driver, fallback to SQLite if DATABASE_URL is not set or in test
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if DATABASE_URL:
-        SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    raw_db_url = (os.getenv("DATABASE_URL") or "").strip()
+    if raw_db_url.startswith("DATABASE_URL="):
+        raw_db_url = raw_db_url.replace("DATABASE_URL=", "", 1).strip()
+
+    if raw_db_url:
+        SQLALCHEMY_DATABASE_URI = raw_db_url
     else:
         # Default development SQLite database file inside backend directory
-        db_path = os.path.join(BASE_DIR, "cloudnotebridge.db")
+        db_path = os.path.join(BASE_DIR, "cloudnotebridge.db").replace("\\", "/")
         SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False

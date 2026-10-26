@@ -38,6 +38,14 @@ def create_app(config_class=None) -> Flask:
     # Register custom CLI commands
     register_cli_commands(app)
 
+    # Automatically ensure database tables exist in development
+    with app.app_context():
+        try:
+            from . import models  # noqa: F401
+            db.create_all()
+        except Exception as exc:
+            app.logger.warning(f"Database auto-migration warning: {exc}")
+
     return app
 
 

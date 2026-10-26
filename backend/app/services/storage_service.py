@@ -206,7 +206,15 @@ def create_storage_service(config: dict) -> StorageService:
     local_dir_val = config.get("LOCAL_STORAGE_DIR")
     local_dir = str(local_dir_val) if local_dir_val else os.path.join(os.getcwd(), "uploads")
 
-    if s3_bucket and (provider in ("s3", "auto")):
+    # Detect placeholder or empty credentials
+    is_placeholder = (
+        not s3_bucket
+        or s3_bucket.startswith("your-")
+        or access_key.startswith("your-")
+        or secret_key.startswith("your-")
+    )
+
+    if (provider in ("s3", "auto")) and not is_placeholder:
         try:
             return S3StorageService(
                 bucket_name=s3_bucket,
